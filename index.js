@@ -110,37 +110,6 @@ async function run() {
     res.send(result);
   });
 
-  // app.patch("/user/profile", verifyToken, async (req, res) => {
-  //   try {
-  //     const email = req.decoded_email;
-  //     if (!email) return res.status(401).send({ message: "Unauthorized" });
-
-  //     const { name, district, upazila, bloodGroup, photoURL } = req.body;
-
-  //     const updateDoc = {
-  //       $set: {
-  //         ...(name && { name }),
-  //         ...(district && { district }),
-  //         ...(upazila && { upazila }),
-  //         ...(bloodGroup && { bloodGroup }),
-  //         ...(photoURL && { photoURL }),
-  //         updatedAt: new Date(),
-  //       },
-  //     };
-
-  //     const result = await usersCollection.updateOne({ email }, updateDoc);
-
-  //     if (result.matchedCount === 0)
-  //       return res.status(404).send({ message: "User not found" });
-
-  //     res.send(result);
-  //   } catch (error) {
-  //     console.error("Profile update error:", error);
-  //     res.status(500).send({ message: "Failed to update profile" });
-  //   }
-  // });
-
-
     //User role
     app.get("/users/role/:email", async (req, res) => {
       const { email } = req.params;
