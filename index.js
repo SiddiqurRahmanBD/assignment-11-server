@@ -62,7 +62,6 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
-
     const db = client.db("savelife");
     const usersCollection = db.collection("users");
     const requestsCollection = db.collection("requests");
