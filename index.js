@@ -7,8 +7,8 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 3000;
 
-const stripe = require("stripe")(process.env.STRIPE_KEY);
-const crypto = require("crypto");
+const stripe = require('stripe')(process.env.STRIPE_KEY);
+const crypto = require('crypto');
 
 app.use(cors());
 app.use(express.json());
@@ -65,6 +65,7 @@ async function run() {
     const db = client.db("savelife");
     const usersCollection = db.collection("users");
     const requestsCollection = db.collection("requests");
+    const paymentsCollection = db.collection("payments");
     //User info
     app.post("/users", async (req, res) => {
       const userInfo = req.body;
@@ -130,28 +131,6 @@ async function run() {
       const result = await usersCollection.updateOne(query, updateStatus);
       res.send(result);
     });
- // PUT or PATCH is appropriate here
-app.patch("/donations/confirm/:id", verifyToken, async (req, res) => {
-  const id = req.params.id; // Get ID from URL
-  const { donationStatus } = req.body; // Get data from body
-  
-  const query = { _id: new ObjectId(id) };
-  
-  const updateDoc = {
-    $set: {
-      donationStatus: donationStatus,
-      // donorName: donorName,
-      // donorEmail: donorEmail,
-    },
-  };
-
-  try {
-    const result = await donationCollection.updateOne(query, updateDoc);
-    res.send(result);
-  } catch (error) {
-    res.status(500).send({ message: "Failed to confirm donation", error });
-  }
-});
     app.patch("/update/user/role", verifyToken, async (req, res) => {
       const { email, role } = req.query;
       const query = { email: email };
@@ -251,6 +230,7 @@ app.patch("/donations/confirm/:id", verifyToken, async (req, res) => {
     app.get("/search-requests", async (req, res) => {
     
       const { bloodGroup, district, upzila } = req.query;
+
       const query = {};
 
       if (bloodGroup) {
@@ -274,24 +254,62 @@ app.patch("/donations/confirm/:id", verifyToken, async (req, res) => {
     //Payment
     app.post("/create-payment-chechout", async (req, res) => {
       const paymentInfo = req.body;
+      const amount = parseInt(paymentInfo.donateAmount) * 100 ;
+      console.log(amount);
+
       const session = await stripe.checkout.sessions.create({
         line_items: [
           {
-            // Provide the exact Price ID (for example, price_1234) of the product you want to sell
+            
             price_data: {
-              currency: 'USD',
-              product_data:{
-                name:paymentInfo.
-              }
+                currency: 'usd',
+                unit_amount: amount,
+                product_data:{
+                  name:'Please Donate'
+                },
+
             },
             quantity: 1,
           },
         ],
         mode: "payment",
-        success_url: `${process.env.SITE_DOMAIN}?success=true`,
+        metadata: {
+            donorName: paymentInfo?.donorName
+        },
+        customer_email:paymentInfo?.donorEmail,
+        success_url: `${process.env.DOMAIN_SITE}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.DOMAIN_SITE}/payment-cancelled`,
       });
 
+      res.send({url:session.url})
+
     });
+
+    app.post("/success-payment", async(req, res) =>{
+      const { session_id } = req.query;
+      const session = await stripe.checkout.sessions.retrieve(
+        session_id
+      );
+      const transactionId = session.payment_intent;
+
+      if(session.payment_status === 'paid') {
+        const paymentInfo = {
+          amount: session.amount_total / 100,
+          currency: session.currency,
+          donorName: session.metadata.donorName,
+          donorEmail: session.customer_email,
+          transactionId,
+          payment_status: session.payment_status,
+          paidAt: new Date(),
+        };
+        const result = await paymentsCollection.insertOne(paymentInfo)
+        return res.send(result)
+      }
+    });
+
+    app.get('/payment-history', async(req, res) =>{
+
+    })
 
     // await client.db("admin").command({ ping: 1 });
     // console.log(
