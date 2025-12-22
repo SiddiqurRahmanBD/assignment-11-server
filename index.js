@@ -166,7 +166,8 @@ async function run() {
       const totalRequest = await requestsCollection.countDocuments(query);
       res.send({ request: result, totalRequest });
     });
-
+     
+    // recent requests show
     app.get("/my-recent-requests", verifyToken, async (req, res) => {
       const email = req.decoded_email;
       const query = { requesterEmail: email };
@@ -179,7 +180,8 @@ async function run() {
 
       res.send(result);
     });
-
+     
+    // all request show here
     app.get("/all-requests", verifyToken, async (req, res) => {
       const email = req.decoded_email;
       const size = Number(req.query.size); 
@@ -308,6 +310,10 @@ async function run() {
     });
 
     app.get('/payment-history', async(req, res) =>{
+
+    const data = req.body;
+    const result = await paymentsCollection.find(data).toArray()
+    res.send(result)
 
     })
 
