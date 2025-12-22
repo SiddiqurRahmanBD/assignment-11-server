@@ -130,6 +130,28 @@ async function run() {
       const result = await usersCollection.updateOne(query, updateStatus);
       res.send(result);
     });
+ // PUT or PATCH is appropriate here
+app.patch("/donations/confirm/:id", verifyToken, async (req, res) => {
+  const id = req.params.id; // Get ID from URL
+  const { donationStatus } = req.body; // Get data from body
+  
+  const query = { _id: new ObjectId(id) };
+  
+  const updateDoc = {
+    $set: {
+      donationStatus: donationStatus,
+      // donorName: donorName,
+      // donorEmail: donorEmail,
+    },
+  };
+
+  try {
+    const result = await donationCollection.updateOne(query, updateDoc);
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to confirm donation", error });
+  }
+});
     app.patch("/update/user/role", verifyToken, async (req, res) => {
       const { email, role } = req.query;
       const query = { email: email };
@@ -251,6 +273,23 @@ async function run() {
 
     //Payment
     app.post("/create-payment-chechout", async (req, res) => {
+      const paymentInfo = req.body;
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            // Provide the exact Price ID (for example, price_1234) of the product you want to sell
+            price_data: {
+              currency: 'USD',
+              product_data:{
+                name:paymentInfo.
+              }
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${process.env.SITE_DOMAIN}?success=true`,
+      });
 
     });
 
