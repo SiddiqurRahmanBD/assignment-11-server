@@ -245,7 +245,7 @@ async function run() {
       res.send(result);
     });
 
-    //Payment
+    //Payment info
     app.post("/create-payment-chechout", async (req, res) => {
       const paymentInfo = req.body;
       const amount = parseInt(paymentInfo.donateAmount) * 100;
@@ -276,6 +276,7 @@ async function run() {
       res.send({ url: session.url });
     });
 
+    // Payment Success
     app.post("/success-payment", async (req, res) => {
       const { session_id } = req.query;
       const session = await stripe.checkout.sessions.retrieve(session_id);
@@ -295,7 +296,8 @@ async function run() {
         return res.send(result);
       }
     });
-
+     
+    // Payment History
     app.get("/payment-history", async (req, res) => {
       const data = req.body;
       const result = await paymentsCollection.find(data).sort({ paidAt: -1 }).toArray();
