@@ -138,7 +138,7 @@ async function run() {
       res.send(result);
     });
 
-    // Request Info
+    // Request Info 
 
     app.post("/requests", verifyToken, async (req, res) => {
       const data = req.body;
@@ -224,6 +224,34 @@ async function run() {
       res.send(result);
     });
 
+    // Details Confirm
+
+    app.patch("/donations/:id", verifyToken, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { donationStatus, donorName, donorEmail } = req.body;
+
+        const query = { _id: new ObjectId(id) };
+
+        const updateDoc = {
+          $set: {
+            donationStatus,
+            donorName,
+            donorEmail,
+            confirmedAt: new Date(),
+          },
+        };
+
+        const result = await requestsCollection.updateOne(query, updateDoc);
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Update failed" });
+      }
+    });
+
+
     app.get("/search-requests", async (req, res) => {
       const { bloodGroup, district, upzila } = req.query;
 
@@ -244,6 +272,30 @@ async function run() {
       const result = await requestsCollection.find(query).toArray();
       res.send(result);
     });
+
+    // Update Donator status
+    app.patch("/donation-request/:id", verifyToken, async (req, res) => {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status) {
+          return res.status(400).send({ message: "Status is required" });
+        }
+
+        const filter = { _id: new ObjectId(id) };
+
+        const updateDoc = {
+          $set: {
+            donationStatus: status,
+            updatedAt: new Date(),
+          },
+        };
+
+        const result = await requestsCollection.updateOne(filter, updateDoc);
+
+        res.send(result);
+    });
+
 
     //Payment info
     app.post("/create-payment-chechout", async (req, res) => {
