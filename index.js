@@ -7,15 +7,13 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 3000;
 
-const stripe = require('stripe')(process.env.STRIPE_KEY);
-const crypto = require('crypto');
+const stripe = require("stripe")(process.env.STRIPE_KEY);
+const crypto = require("crypto");
 
 app.use(cors());
 app.use(express.json());
 
-
 const admin = require("firebase-admin");
-
 
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
   "utf8"
@@ -29,21 +27,20 @@ admin.initializeApp({
 
 const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization;
-  if(!token){
-    return res.status(401).send({message: 'unauthorize access'})
+  if (!token) {
+    return res.status(401).send({ message: "unauthorize access" });
   }
 
   try {
-const idToken = token.split(' ')[1]
-const decoded = await admin.auth().verifyIdToken(idToken)
-console.log("decoded info", decoded);
-req.decoded_email = decoded.email;
-next();
+    const idToken = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    console.log("decoded info", decoded);
+    req.decoded_email = decoded.email;
+    next();
+  } catch (error) {
+    return res.status(401).send({ message: "unauthorize access" });
   }
-  catch(error) {
-  return res.status(401).send({ message: "unauthorize access" });
-  }
-}
+};
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@duasmasi.bhtinpf.mongodb.net/?appName=Duasmasi`;
 
@@ -57,7 +54,6 @@ const client = new MongoClient(uri, {
 });
 
 async function run() {
-  
   try {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
@@ -87,28 +83,27 @@ async function run() {
       res.send(result);
     });
 
-    
-  app.patch("/profile-update/:email", verifyToken, async (req, res) => {
-    const email = req.params.email;
-    const updatedProfile = req.body;
+    app.patch("/profile-update/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const updatedProfile = req.body;
 
-    const query = { email: email };
+      const query = { email: email };
 
-    const updateData = {
-      $set: {
-        name: updatedProfile.name,
-        district: updatedProfile.district,
-        upzila: updatedProfile.upzila,
-        bloodGroup: updatedProfile.bloodGroup,
-        photoURL: updatedProfile.photoURL,
-        photoURL: updatedProfile.photoURL
-      },
-    };
+      const updateData = {
+        $set: {
+          name: updatedProfile.name,
+          district: updatedProfile.district,
+          upzila: updatedProfile.upzila,
+          bloodGroup: updatedProfile.bloodGroup,
+          photoURL: updatedProfile.photoURL,
+          photoURL: updatedProfile.photoURL,
+        },
+      };
 
-    const result = await usersCollection.updateOne(query, updateData);
+      const result = await usersCollection.updateOne(query, updateData);
 
-    res.send(result);
-  });
+      res.send(result);
+    });
 
     //User role
     app.get("/users/role/:email", async (req, res) => {
@@ -166,7 +161,7 @@ async function run() {
       const totalRequest = await requestsCollection.countDocuments(query);
       res.send({ request: result, totalRequest });
     });
-     
+
     // recent requests show
     app.get("/my-recent-requests", verifyToken, async (req, res) => {
       const email = req.decoded_email;
@@ -180,13 +175,13 @@ async function run() {
 
       res.send(result);
     });
-     
+
     // all request show here
     app.get("/all-requests", verifyToken, async (req, res) => {
       const email = req.decoded_email;
-      const size = Number(req.query.size); 
-      const page = Number(req.query.page); 
-      const status = req.query.status; 
+      const size = Number(req.query.size);
+      const page = Number(req.query.page);
+      const status = req.query.status;
       let query = {};
 
       const user = await usersCollection.findOne({ email });
@@ -230,7 +225,6 @@ async function run() {
     });
 
     app.get("/search-requests", async (req, res) => {
-    
       const { bloodGroup, district, upzila } = req.query;
 
       const query = {};
@@ -240,7 +234,6 @@ async function run() {
       }
 
       if (district) {
-  
         query.districtName = district;
       }
 
@@ -250,51 +243,45 @@ async function run() {
 
       const result = await requestsCollection.find(query).toArray();
       res.send(result);
-      
     });
 
     //Payment
     app.post("/create-payment-chechout", async (req, res) => {
       const paymentInfo = req.body;
-      const amount = parseInt(paymentInfo.donateAmount) * 100 ;
+      const amount = parseInt(paymentInfo.donateAmount) * 100;
       console.log(amount);
 
       const session = await stripe.checkout.sessions.create({
         line_items: [
           {
-            
             price_data: {
-                currency: 'usd',
-                unit_amount: amount,
-                product_data:{
-                  name:'Please Donate'
-                },
-
+              currency: "usd",
+              unit_amount: amount,
+              product_data: {
+                name: "Please Donate",
+              },
             },
             quantity: 1,
           },
         ],
         mode: "payment",
         metadata: {
-            donorName: paymentInfo?.donorName
+          donorName: paymentInfo?.donorName,
         },
-        customer_email:paymentInfo?.donorEmail,
+        customer_email: paymentInfo?.donorEmail,
         success_url: `${process.env.DOMAIN_SITE}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${process.env.DOMAIN_SITE}/payment-cancelled`,
       });
 
-      res.send({url:session.url})
-
+      res.send({ url: session.url });
     });
 
-    app.post("/success-payment", async(req, res) =>{
+    app.post("/success-payment", async (req, res) => {
       const { session_id } = req.query;
-      const session = await stripe.checkout.sessions.retrieve(
-        session_id
-      );
+      const session = await stripe.checkout.sessions.retrieve(session_id);
       const transactionId = session.payment_intent;
 
-      if(session.payment_status === 'paid') {
+      if (session.payment_status === "paid") {
         const paymentInfo = {
           amount: session.amount_total / 100,
           currency: session.currency,
@@ -304,18 +291,40 @@ async function run() {
           payment_status: session.payment_status,
           paidAt: new Date(),
         };
-        const result = await paymentsCollection.insertOne(paymentInfo)
-        return res.send(result)
+        const result = await paymentsCollection.insertOne(paymentInfo);
+        return res.send(result);
       }
     });
 
-    app.get('/payment-history', async(req, res) =>{
+    app.get("/payment-history", async (req, res) => {
+      const data = req.body;
+      const result = await paymentsCollection.find(data).sort({ paidAt: -1 }).toArray();
+      res.send(result);
+    });
 
-    const data = req.body;
-    const result = await paymentsCollection.find(data).toArray()
-    res.send(result)
+    app.get("/admin-stats", verifyToken, async (req, res) => {
+        const totalUsers = await usersCollection.countDocuments({
+          role: "Donor",
+        });
+        const totalRequests = await requestsCollection.countDocuments();
 
-    })
+        const fundingData = await paymentsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: null,
+                totalAmount: { $sum: "$amount" },
+              },
+            },
+          ])
+          .toArray();
+        const result = {
+          totalUsers,
+          totalRequests,
+          totalFunding: fundingData[0]?.totalAmount || 0,
+        };
+        res.send(result);
+    });
 
     // await client.db("admin").command({ ping: 1 });
     // console.log(
@@ -327,7 +336,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
 
 app.get("/", (req, res) => {
   res.send("Last Mission Server is Working!");
